@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>2D GAME ON JS</title>
+    <style>* { padding: 0; margin: 0; }</style>
+    <script src="js/phaser.min.js"></script>
+</head>
+<body>
+<div id="divName" style="position: absolute; left: 50%; width:180px; padding-bottom: 5px; background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#dff0d8), to(#c8e5bc)); background-image: -webkit-linear-gradient(#dff0d8 0%, #c8e5bc 100%); background-image: -moz-linear-gradient(#dff0d8 0%, #c8e5bc 100%);background-image: -o-linear-gradient(#dff0d8 0%, #c8e5bc 100%);background-image: linear-gradient(#dff0d8 0%, #c8e5bc 100%);border-color: #b2dba1;-webkit-border-radius: 5px; -moz-border-radius: 5px; border-radius: 5px;">
+    <div style="text-align: center; ">
+        <p>Введите имя</p>
+        <input id="inpName" type="text" pattern="[A-Za-zА-Яа-яЁё]">
+    </div>
+
+</div>
+<script>
+    var divName = document.getElementById('divName');
+    // divName.style.margin = "-"+(document.documentElement.clientHeight-768-100)+"px 0 0 -90px";
+    var inpName = document.getElementById('inpName');
+
+    var game = new Phaser.Game(1024, 768, Phaser.CANVAS, null, {
+        preload: preload, create: create, update: update
+    });
+
+    var background, player, cursors, spaceKey, timerText, pits, pitInfo, newPit, tools, toolInfo, newTool, gameName, gameInstruction, gameStat, health, healthInfo, playerName;
+    var healthSpawn = true;
+    var playerSpeed = 5;
+    var time;
+    var timer = 20;
+    var arrayRandRow = [];
+    var tempHealth = 0;
+
+    /////////////////////////////////////////////////
+
+    var scoreText, toolsText, endText, power, powerText, plusText, minusText;
+    var powerTimer = 7;
+    var powerOnce = false;
+    var powerActive = false;
+    var score = 0;
+    var toolsCounter = 0;
+    var lives = 2;
+    var livesText;
+    var textSize = 40;
+    var textStyle = { font: textSize+'px Courier, monospace', fill: '#fff' };
+    var scoreTable = 'Таблица рекордов:\n';
+    var playing = false;
+    var tester = false;
+    var startButton, pauseButton, plusButton, minusButton;
+
+    var driveSound;
+    function preload() {
+        game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+        game.scale.pageAlignHorizontally = true;
+        game.scale.pageAlignVertically = true;
+
+        game.load.spritesheet('button', 'img2/button.png', 120, 40);
+
+        game.load.image('bg', 'img/bg-game.jpg');
+        game.load.image('player', 'img/player.png');
+        game.load.image('pit', 'img/pit2.png');
+        game.load.image('tools', 'img/tools2.png');
+        game.load.image('health', 'img/heart.png');
+        game.load.image('power', 'img/power-skill-1.png');
+        game.load.image('key_p', 'img/key/p.png');
+        game.load.image('key_plus', 'img/key/blank.png');
+        game.load.image('key_minus', 'img/key/blank.png');
+
+        game.load.audio('drive', ['audio/drive.mp3','audio/drive.ogg']);
+    }
+    function create() {
+        game.physics.startSystem(Phaser.Physics.ARCADE);
+
+        background = game.add.tileSprite(0, 0, 1024, 768, 'bg');
+
+        player = game.add.sprite(game.world.width*0.5, game.world.height-160, 'player');
+        player.width *= 0.75;
+        player.height *= 0.75;
+        player.anchor.set(0.5,0.5);
+        game.physics.enable(player, Phaser.Physics.ARCADE);
+        player.body.immovable = true;
+
+        initPits();
+        initTools();
+        initHealth();
+
+        /////////////////////////////////////////////////
+
+        playerName = game.add.text(game.world.width*0.5, 5, '', textStyle);
+        playerName.anchor.set(0.5, 0);
+        playerName.visible = false;
+
+        powerText = game.add.text(game.world.width*0.5, 50, 'СУПЕРСИЛА\n  00:0'+powerTimer, textStyle);
+        powerText.anchor.set(0.5, 0);
+        powerText.visible = false;
+
+        scoreText = game.add.text(5, 5, 'Points: 0', textStyle);
+        scoreText.visible = false;
+        toolsText = game.add.text(5, 50, 'Tools: 0', textStyle);
+        toolsText.visible = false;
+
+        livesText = game.add.text(game.world.width-5, 5, 'Lives: '+lives, textStyle);
+        livesText.anchor.set(1,0);
+        livesText.visible = false;
+
+        power = game.add.sprite(game.world.width-5, game.world.height-5, 'power');
+        power.width *= 0.075;
+        power.height *= 0.075;
+        power.anchor.set(1,1);
+        power.visible = false;
+
+        startButton = game.add.button(game.world.width*0.5, game.world.height*0.5, 'button', startGame, this, 1, 0, 2);
+        startButton.anchor.set(0.5);
+
+        gameName = game.add.text(game.world.width*0.5, 50, 'СуперАвто', textStyle);
+        gameName.anchor.set(0.5);
+
+        gameInstruction = game.add.text(game.world.width*0.5, 200, 'Инструкция:\nИгрок может передвигаться,\nкликая мышью слева и \nсправа от автомобиля.', textStyle);
+        gameInstruction.anchor.set(0.5);
+
+        /////////////////////////////////////////////////
+
+        timerText = game.add.text(game.world.width-5, 50, '00:'+timer, textStyle);
+        timerText.anchor.set(1,0);
+        timerText.visible = false;
+
+        cursors = game.input.keyboard.createCursorKeys();
+
+        spaceKey = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+        // pauseKey = game.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+
+        // console.log(game.input.keyboard);
+
+        time = game.time.events.loop(Phaser.Timer.SECOND, updateCounter, this);
+
+        pauseButton = game.add.button(game.world.width-5, 100, 'key_p', pauseGame, this, 0, 0, 0);
+        pauseButton.width *= 0.5;
+        pauseButton.height *= 0.5;
+        pauseButton.anchor.set(1,0);
+        pauseButton.visible = false;
+
+        plusButton = game.add.button(game.world.width-5, 170, 'key_plus', textSizePlus, this, 0, 0, 0);
+        plusButton.width *= 0.5;
+        plusButton.height *= 0.5;
+        plusButton.anchor.set(1,0);
+
+        plusText = game.add.text(game.world.width-5-plusButton.width*0.5, plusButton.y+plusButton.height*0.5, '+', textStyle);
+        plusText.anchor.set(0.5,0.5);
+        plusText.fill = '#000';
+
+        minusButton = game.add.button(game.world.width-5, 240, 'key_minus', textSizeMinus, this, 0, 0, 0);
+        minusButton.width *= 0.5;
+        minusButton.height *= 0.5;
+        minusButton.anchor.set(1,0);
+
+        minusText = game.add.text(game.world.width-5-minusButton.width*0.5, minusButton.y+minusButton.height*0.5, '-', textStyle);
+        minusText.anchor.set(0.5,0.5);
+        minusText.fill = '#000';
+
+        game.input.keyboard.onUpCallback = function(e){
+            if(e.keyCode == Phaser.Keyboard.P && playing) {
+                pauseKeyGame();
+            }
+        };
+        // pauseKey.on('down', pauseKeyGame);
+        game.input.onDown.add(unpauseGame, self);
+
+        endText = game.add.text(game.world.width*0.5, 50, 'Конец игры', textStyle);
+        endText.anchor.set(0.5);
+        endText.visible = false;
+
+        gameStat = game.add.text(game.world.width*0.5, 125, scoreTable, textStyle);
+        gameStat.anchor.set(0.5, 0);
+        gameStat.visible = false;
+
+        driveSound = game.add.audio('drive');
+
+        game.sound.setDecodedCallback(driveSound, update, this);
+
+        // driveSound.allowMultiple = true;
+
+        // driveSound.addMarker('drive_start', 4, 3.2);
+    }
+    function update() {
+        // game.debug.soundInfo(driveSound, 32, 32);
+        //
+        // if (driveSound.isDecoding)
+        // {
+        //     game.debug.text("Decoding MP3 ...", 32, 200);
+        // }
+
+        divName.style.margin = (game.scale.height/2 - game.scale.height/10)+"px 0 0 -90px";
+        // console.log(game);
+        startButton.visible = !!inpName.value;
+        game.physics.arcade.collide(player, pits, pitFix);
+        game.physics.arcade.collide(player, tools, toolsAdd);
+        game.physics.arcade.collide(player, health, healthAdd);
+        if(playing) {
+            // driveSound.play('drive_start');
+            background.tilePosition.y += playerSpeed;
+            pits.y += playerSpeed;
+            if(pits.y > game.world.height + pitInfo.height) {
+                pits.removeAll();
+                initPits();
+            }
+            tools.y += playerSpeed;
+            if(tools.y > game.world.height + toolInfo.height - toolInfo.offset.top) {
+                tools.removeAll();
+                initTools();
+            }
+            // console.log(healthSpawn);
+            if(healthSpawn) {
+                health.y += playerSpeed;
+                if (health.y > game.world.height + healthInfo.height) {
+                    healthSpawn = false;
+                    tempHealth = background.tilePosition.y;
+                    // console.log(tempHealth);
+                    // console.log(tempHealth + game.world.height);
+                    health.kill();
+                    initHealth();
+                }
+            }
+            else if(background.tilePosition.y >= (tempHealth + (game.world.height*2))) healthSpawn = true;
+
+            // player.body.velocity.setTo(0, 0);
+
+            if ((game.input.x - playerSpeed*2) > player.x && game.input.activePointer.isDown && (player.x + playerSpeed) < game.world.width && game.input.y > game.world.height*0.5) {
+                player.x += playerSpeed;
+            }
+            else if ((game.input.x + playerSpeed*2) < player.x && game.input.activePointer.isDown && (player.x - playerSpeed) > 0 && game.input.y > game.world.height*0.5) {
+                player.x -= playerSpeed;
+            }
+
+            if ((player.x <= 312 || player.x >= 822) && !powerActive && !tester)
+            {
+                endGame();
+                var backgroundTween = game.add.tween(background.tilePosition);
+                backgroundTween.to({y:background.tilePosition.y + playerSpeed*20}, 1000, "Linear");
+                var playerTween = game.add.tween(player);
+                if (player.x <= 312)
+                    playerTween.to({x: player.width * 0.5}, 1000, "Linear");
+                else if (player.x >= 822)
+                    playerTween.to({x: game.world.width - player.width*0.5}, 1000, "Linear");
+                backgroundTween.start();
+                playerTween.start();
+            }
+
+            if(spaceKey.isDown && !powerOnce) {
+                power.kill();
+                powerText.visible = true;
+                powerOnce = true;
+                powerActive = true;
+            }
+        }
+    }
+    function startGame() {
+        driveSound.play();
+        gameName.destroy();
+        gameInstruction.destroy();
+        divName.style.display = "none";
+        startButton.destroy();
+
+        if(inpName.value == 'tester'){
+            playerName.setText('TEST');
+            tester = true;
+        }
+        else {
+            playerName.setText(inpName.value);
+
+        }
+        timerText.visible = true;
+
+        playerName.visible = true;
+        scoreText.visible = true;
+        toolsText.visible = true;
+        livesText.visible = true;
+        power.visible = true;
+        pauseButton.visible = true;
+
+        playing = true;
+    }
+    function pauseKeyGame() {
+        game.paused = !game.paused;
+    }
+    function pauseGame() {
+        game.paused = true;
+    }
+    function unpauseGame() {
+        game.paused = false;
+    }
+    function textSizePlus() {
+        if(textSize<200)textSize+=5;
+        textSizeAll(textSize);
+    }
+    function textSizeMinus() {
+        if(textSize>5)textSize-=5;
+        textSizeAll(textSize);
+    }
+    function textSizeAll(size) {
+        gameName.fontSize = size;
+        gameInstruction.fontSize = size;
+        playerName.fontSize = size;
+        scoreText.fontSize = size;
+        toolsText.fontSize = size;
+        livesText.fontSize = size;
+        timerText.fontSize = size;
+        powerText.fontSize = size;
+        endText.fontSize = size;
+        gameStat.fontSize = size;
+    }
+    function updateCounter() {
+        if(powerActive){
+            powerTimer--;
+            powerText.setText('СУПЕРСИЛА\n  00:0'+powerTimer);
+            if(powerTimer <= 0){
+                powerText.visible = false;
+                powerActive = false;
+            }
+        }
+        if(timer <= 0 && !tester)
+        {
+            game.time.events.remove(time);
+            endGame();
+            var backgroundTween = game.add.tween(background.tilePosition);
+            backgroundTween.to({y:background.tilePosition.y + playerSpeed*20}, 1000, "Linear");
+            backgroundTween.start();
+        }
+        else if(playing) {
+            if(!tester) timer--;
+            playerSpeed+=0.75;
+            if (timer < 10) {
+                timerText.setText('00:0' + timer,);
+                timerText.fontSize = 150;
+            }
+            else timerText.setText('00:'+timer);
+        }
+    }
+    function randRow() {
+        for(i=1; i <=4; i++)
+        {
+            arrayRandRow[i] = Math.round(Math.random() * 1.8);
+        }
+    }
+    function initPits() {
+        pitInfo = {
+            width: 100,
+            height: 34*2,
+            count: {
+                row: 1,
+                col: 4
+            },
+            offset: {
+                top: -30,
+                left: 350
+            },
+            paddingLeft: 50
+        };
+
+        randRow();
+        pits = game.add.group();
+        for(c=0; c<pitInfo.count.col; c++) {
+            for(r=0; r<pitInfo.count.row; r++) {
+                if (arrayRandRow[c]) {
+                    var pitX = (c * (pitInfo.width + pitInfo.paddingLeft)) + pitInfo.offset.left;
+                    var pitY = (r * pitInfo.height) + pitInfo.offset.top;
+                    newPit = game.add.sprite(pitX, pitY, 'pit');
+                    newPit.width = pitInfo.width;
+                    newPit.height = pitInfo.height;
+                    game.physics.enable(newPit, Phaser.Physics.ARCADE);
+                    newPit.body.immovable = true;
+                    newPit.anchor.set(0.5);
+                    pits.add(newPit);
+                }
+            }
+        }
+    }
+    function initTools() {
+        toolInfo = {
+            width: 100,
+            height: 100,
+            count: {
+                row: 1,
+                col: 4
+            },
+            offset: {
+                top: -(game.world.height*0.5),
+                left: 350
+            },
+            paddingLeft: 50
+        };
+
+        randRow();
+        var toolsCount = 0;
+        var toolsAddOnce = false;
+        var toolsMaxInRow = Math.ceil(Math.random() *2);
+        // console.log(toolsMaxInRow);
+        tools = game.add.group();
+        for (c = 0; c < toolInfo.count.col; c++) {
+            for (r = 0; r < toolInfo.count.row; r++) {
+                if (!toolsAddOnce && arrayRandRow[c] && toolsCount < toolsMaxInRow) {
+                    toolsCount++;
+                    toolsAddOnce = true;
+                    var toolX = (c * (toolInfo.width + toolInfo.paddingLeft)) + toolInfo.offset.left;
+                    var toolY = (r * toolInfo.height) + toolInfo.offset.top;
+                    newTool = game.add.sprite(toolX, toolY, 'tools');
+                    newTool.width = toolInfo.width;
+                    newTool.height = toolInfo.height;
+                    game.physics.enable(newTool, Phaser.Physics.ARCADE);
+                    newTool.body.immovable = true;
+                    newTool.anchor.set(0.5);
+                    tools.add(newTool);
+                }
+                else if(toolsAddOnce) toolsAddOnce = false;
+            }
+        }
+    }
+    function initHealth() {
+        healthInfo = {
+            width: 100,
+            height: 100,
+            count: {
+                row: 1,
+                col: 4
+            },
+            offset: {
+                top: -(game.world.height*0.75),
+                left: 350
+            },
+            paddingLeft: 50
+        };
+
+        var healtCol = Math.floor(Math.random() * healthInfo.count.col);
+        var healthX = (healtCol * (healthInfo.width + healthInfo.paddingLeft)) + healthInfo.offset.left;
+        var healthY = healthInfo.height + healthInfo.offset.top;
+        health = game.add.sprite(healthX, healthY, 'health');
+        health.width = healthInfo.width;
+        health.height = healthInfo.height;
+        game.physics.enable(health, Phaser.Physics.ARCADE);
+        health.body.immovable = true;
+        health.anchor.set(0.5);
+    }
+    function pitFix(player, pit) {
+        if(toolsCounter) {
+            pit.kill();
+            score++;
+            scoreText.setText('Points: ' +score);
+            toolsCounter--;
+            toolsText.setText('Tools: '+toolsCounter);
+        }
+        else {
+            lives--;
+            pit.kill();
+            livesText.setText('Lives: '+lives);
+            if(!lives && !tester) {
+                endGame();
+                var deadTween = game.add.tween(player.scale);
+                deadTween.to({x:0,y:0}, 1250, Phaser.Easing.Linear.None);
+                deadTween.start();
+            }
+        }
+    }
+    function toolsAdd(player, tool) {
+        tool.kill();
+        toolsCounter++;
+        toolsText.setText('Tools: '+toolsCounter);
+    }
+    function healthAdd(player, health) {
+        health.kill();
+        if(lives < 5) {
+            lives++;
+            livesText.setText('Lives: ' + lives);
+        }
+    }
+    function endGame() {
+        playing = false;
+
+        pits.removeAll();
+        tools.removeAll();
+        health.kill();
+        power.kill();
+
+        playerName.visible = false;
+        scoreText.visible = false;
+        toolsText.visible = false;
+        livesText.visible = false;
+        timerText.visible = false;
+        powerText.visible = false;
+
+        pauseButton.destroy();
+
+        if(score > localStorage.getItem(inpName.value))
+            localStorage.setItem(inpName.value, score);
+
+
+        var playerDetected = false;
+        var arr = [];
+        for(let i=0; i<localStorage.length; i++) {
+            let key = localStorage.key(i);
+            arr.push({name: key, value: localStorage.getItem(key)});
+        }
+
+        arr.sort((a, b) => b.value - a.value);
+
+        for(let i=0; i<arr.length; i++){
+            if (arr[i].name == inpName.value) {
+                playerDetected = true;
+            }
+            if(i < 9 || (i == 9 && playerDetected) || (i >= 9 && arr[i].name == inpName.value)) {
+                scoreTable += (i + 1) + '. ' + arr[i].name + ' очков: ' + arr[i].value + '\n';
+            }
+        }
+
+        endText.visible = true;
+
+        gameStat.setText(scoreTable);
+        gameStat.visible = true;
+
+        startButton = game.add.button(game.world.width*0.5, gameStat.height+150, 'button', restartGame, this, 1, 0, 2);
+        startButton.anchor.set(0.5);
+    }
+    function restartGame() {
+        location.reload();
+    }
+    // console.log(cursors);
+</script>
+</body>
+</html>
