@@ -47,7 +47,7 @@
     var tester = false;
     var startButton, pauseButton, plusButton, minusButton;
 
-    var driveSound;
+    var carSounds, drive, crash;
     function preload() {
         game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
         game.scale.pageAlignHorizontally = true;
@@ -66,6 +66,7 @@
         game.load.image('key_minus', 'img/key/blank.png');
 
         game.load.audio('drive', ['audio/drive.mp3','audio/drive.ogg']);
+        game.load.audio('crash', ['audio/crash.mp3','audio/crash.ogg']);
     }
     function create() {
         game.physics.startSystem(Phaser.Physics.ARCADE);
@@ -168,24 +169,17 @@
         gameStat.anchor.set(0.5, 0);
         gameStat.visible = false;
 
-        driveSound = game.add.audio('drive');
+        drive = game.add.audio('drive');
+        crash = game.add.audio('crash');
 
-        game.sound.setDecodedCallback(driveSound, update, this);
+        carSounds = [drive, crash];
 
-        driveSound.addMarker('drive_start', 4, 3.2);
+        game.sound.setDecodedCallback(carSounds, update, this);
 
-        // driveSound.allowMultiple = true;
-
-        // driveSound.addMarker('drive_start', 4, 3.2);
+        drive.addMarker('drive_start', 17, 0);
+        crash.addMarker('crash_start', 2, 0);
     }
     function update() {
-        // game.debug.soundInfo(driveSound, 32, 32);
-        //
-        // if (driveSound.isDecoding)
-        // {
-        //     game.debug.text("Decoding MP3 ...", 32, 200);
-        // }
-
         divName.style.margin = (game.scale.height/2 - game.scale.height/10)+"px 0 0 -90px";
         startButton.visible = !!inpName.value;
         game.physics.arcade.collide(player, pits, pitFix);
@@ -244,7 +238,7 @@
         }
     }
     function startGame() {
-        driveSound.play('drive_start');
+        drive.play('drive_start');
         gameName.destroy();
         gameInstruction.destroy();
         divName.style.display = "none";
@@ -441,6 +435,7 @@
             pit.kill();
             livesText.setText('Lives: '+lives);
             if(!lives && !tester) {
+                crash.play('crash_start');
                 endGame();
                 var deadTween = game.add.tween(player.scale);
                 deadTween.to({x:0,y:0}, 1250, Phaser.Easing.Linear.None);
@@ -461,6 +456,7 @@
         }
     }
     function endGame() {
+        drive.stop();
         playing = false;
 
         pits.removeAll();
