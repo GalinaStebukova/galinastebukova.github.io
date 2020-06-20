@@ -27,7 +27,7 @@ var textStyle = { font: textSize+'px Courier, monospace', fill: '#fff' };
 var scoreTable = 'Таблица рекордов:\n';
 var playing = false;
 var tester = false;
-var startButton, pauseButton, plusButton, minusButton;
+var startButton, pauseButton, plusButton, minusButton, soundButton, soundOn, soundOff;
 var sounds, drive, pit_fix, hit, stop, toolSound, heart, timeSound, powerSound;
 var px, py;
 
@@ -49,8 +49,9 @@ function preload() {
     game.load.image('health', 'img/heart.png');
     game.load.image('power', 'img/power-skill-1.png');
     game.load.image('key_p', 'img/key/p.png');
-    game.load.image('key_plus', 'img/key/blank.png');
-    game.load.image('key_minus', 'img/key/blank.png');
+    game.load.image('key_blank', 'img/key/blank.png');
+    game.load.image('sound_on', 'img/sound.png');
+    game.load.spritesheet('sound_off', 'img/sound.png', 130, 256);
 
     game.load.audio('drive', ['audio/drive.mp3','audio/drive.ogg']);
     game.load.audio('pit_fix', ['audio/pitfix.mp3','audio/pitfix.ogg']);
@@ -91,7 +92,7 @@ function create() {
     startButton.anchor.set(0.5);
 
     // Кнопка увеличени шрифта
-    plusButton = game.add.button(game.world.width-5, 170, 'key_plus', textSizePlus, this, 0, 0, 0);
+    plusButton = game.add.button(game.world.width-5, 170, 'key_blank', textSizePlus, this, 0, 0, 0);
     plusButton.width *= 0.5;
     plusButton.height *= 0.5;
     plusButton.anchor.set(1,0);
@@ -99,7 +100,7 @@ function create() {
     plusText.anchor.set(0.5,0.5);
     plusText.fill = '#000';
     // Кнопка уменьшения шрифта
-    minusButton = game.add.button(game.world.width-5, 240, 'key_minus', textSizeMinus, this, 0, 0, 0);
+    minusButton = game.add.button(game.world.width-5, 240, 'key_blank', textSizeMinus, this, 0, 0, 0);
     minusButton.width *= 0.5;
     minusButton.height *= 0.5;
     minusButton.anchor.set(1,0);
@@ -139,6 +140,23 @@ function create() {
     pauseButton.height *= 0.5;
     pauseButton.anchor.set(1,0);
     pauseButton.visible = false;
+    // Кнопка выкл звука
+    soundButton = game.add.button(game.world.width-5, 310, 'key_blank', soundGame, this, 0, 0, 0);
+    soundButton.width *= 0.5;
+    soundButton.height *= 0.5;
+    soundButton.anchor.set(1,0);
+    // soundButton.visible = false;
+    soundOff = game.add.sprite(game.world.width-5-soundButton.width*0.5, soundButton.y+soundButton.height*0.5, 'sound_off');
+    soundOff.width *= 0.15;
+    soundOff.height *= 0.15;
+    soundOff.anchor.set(0.5,0.5);
+    soundOff.visible = false;
+    // soundOff.fill = '#000';
+    soundOn = game.add.sprite(game.world.width-5-soundButton.width*0.5, soundButton.y+soundButton.height*0.5, 'sound_on');
+    soundOn.width *= 0.15;
+    soundOn.height *= 0.15;
+    soundOn.anchor.set(0.5,0.5);
+    // soundOff.fill = '#000';
     // Иконка супер силы
     power = game.add.sprite(game.world.width-5, game.world.height-5, 'power');
     power.width *= 0.075;
@@ -338,6 +356,27 @@ function pauseGame() {
 // Функция возобновление игры по нажатию на любую область экрана
 function unpauseGame() {
     game.paused = false;
+}
+
+// Функция вкл звука
+function soundGame() {
+    if(game.sound.volume > 0)
+        soundGameOff();
+    else soundGameOn();
+}
+
+// Функция вкл звука
+function soundGameOn() {
+    soundOn.visible = true;
+    soundOff.visible = false;
+    game.sound.volume = 1;
+}
+
+// Функция выкл звука
+function soundGameOff() {
+    soundOn.visible = false;
+    soundOff.visible = true;
+    game.sound.volume = 0;
 }
 
 // Функция увеличения значения шрифта
