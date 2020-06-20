@@ -7,7 +7,7 @@
     <script src="js/phaser.min.js"></script>
 </head>
 <body>
-<div id="divName" style="position: absolute; left: 50%; width:180px; padding-bottom: 5px; background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#dff0d8), to(#c8e5bc)); background-image: -webkit-linear-gradient(#dff0d8 0%, #c8e5bc 100%); background-image: -moz-linear-gradient(#dff0d8 0%, #c8e5bc 100%);background-image: -o-linear-gradient(#dff0d8 0%, #c8e5bc 100%);background-image: linear-gradient(#dff0d8 0%, #c8e5bc 100%);border-color: #b2dba1;-webkit-border-radius: 5px; -moz-border-radius: 5px; border-radius: 5px;">
+<div id="divName" style="position: absolute; left: 50%; width:180px; padding: 5px; background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#dff0d8), to(#c8e5bc)); background-image: -webkit-linear-gradient(#dff0d8 0%, #c8e5bc 100%); background-image: -moz-linear-gradient(#dff0d8 0%, #c8e5bc 100%);background-image: -o-linear-gradient(#dff0d8 0%, #c8e5bc 100%);background-image: linear-gradient(#dff0d8 0%, #c8e5bc 100%);border-color: #b2dba1;-webkit-border-radius: 5px; -moz-border-radius: 5px; border-radius: 5px;">
     <div style="text-align: center; ">
         <p>Введите имя</p>
         <input id="inpName" type="text" pattern="[A-Za-zА-Яа-яЁё]">
@@ -47,7 +47,9 @@
     var tester = false;
     var startButton, pauseButton, plusButton, minusButton;
 
-    var carSounds, drive, crash;
+    var sounds, drive, crash, pit_fix, hit, stop, toolSound, heart, timeSound, powerSound;
+
+    var px, py;
     function preload() {
         game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
         game.scale.pageAlignHorizontally = true;
@@ -67,6 +69,13 @@
 
         game.load.audio('drive', ['audio/drive.mp3','audio/drive.ogg']);
         game.load.audio('crash', ['audio/crash.mp3','audio/crash.ogg']);
+        game.load.audio('pit_fix', ['audio/pitfix.mp3','audio/pitfix.ogg']);
+        game.load.audio('hit', ['audio/hit.mp3','audio/hit.ogg']);
+        game.load.audio('stop', ['audio/stop.mp3','audio/stop.ogg']);
+        game.load.audio('tool', ['audio/tools.mp3','audio/tools.ogg']);
+        game.load.audio('heart', ['audio/heart.mp3','audio/heart.ogg']);
+        game.load.audio('time', ['audio/time.mp3','audio/time.ogg']);
+        game.load.audio('power', ['audio/power.mp3','audio/power.ogg']);
     }
     function create() {
         game.physics.startSystem(Phaser.Physics.ARCADE);
@@ -171,13 +180,30 @@
 
         drive = game.add.audio('drive');
         crash = game.add.audio('crash');
+        pit_fix =  game.add.audio('pit_fix');
+        hit = game.add.audio('hit');
+        stop = game.add.audio('stop');
+        toolSound = game.add.audio('tool');
+        heart = game.add.audio('heart');
+        timeSound = game.add.audio('time');
+        powerSound = game.add.audio('power');
 
-        carSounds = [drive, crash];
+        sounds = [drive, crash, pit_fix, hit, stop, toolSound, heart, timeSound, powerSound];
 
-        game.sound.setDecodedCallback(carSounds, update, this);
+        game.sound.setDecodedCallback(sounds, update, this);
 
-        drive.addMarker('drive_start', 17, 0);
-        crash.addMarker('crash_start', 2, 0);
+        drive.addMarker('drive_start', 17, 0, 0.2, 1);
+        crash.addMarker('crash_start', 2, 0, 0.5);
+        pit_fix.addMarker('fast_fix', 0, 0.9, 0.25);
+        hit.addMarker('fast_hit', 11.3, 0.5);
+        stop.addMarker('stop', 5, 2, 0.3);
+        toolSound.addMarker('tool', 0, 0, 0.3);
+        heart.addMarker('heart', 0.6, 0);
+        timeSound.addMarker('last_time', 1, 6, 0.1);
+        powerSound.addMarker('power_time', 0, 7, 0.4);
+
+        px = player.scale.x;
+        py = player.scale.y;
     }
     function update() {
         divName.style.margin = (game.scale.height/2 - game.scale.height/10)+"px 0 0 -90px";
@@ -230,6 +256,7 @@
             }
 
             if(spaceKey.isDown && !powerOnce) {
+                powerSound.play('power_time');
                 power.kill();
                 powerText.visible = true;
                 powerOnce = true;
@@ -296,11 +323,17 @@
         if(powerActive){
             powerTimer--;
             powerText.setText('СУПЕРСИЛА\n  00:0'+powerTimer);
+            var powerTween = game.add.tween(player.scale);
+            powerTween.to({x:px*0.9,y:py*0.9}, 500, Phaser.Easing.Linear.None);
+            powerTween.to({x:px,y:py}, 500, Phaser.Easing.Linear.None);
+            powerTween.start();
             if(powerTimer <= 0){
+                powerSound.stop();
                 powerText.visible = false;
                 powerActive = false;
             }
         }
+        if(timer == 6) timeSound.play('last_time');
         if(timer <= 0 && !tester)
         {
             game.time.events.remove(time);
@@ -314,7 +347,6 @@
             playerSpeed+=0.75;
             if (timer < 10) {
                 timerText.setText('00:0' + timer,);
-                timerText.fontSize = 150;
             }
             else timerText.setText('00:'+timer);
         }
@@ -424,6 +456,7 @@
     }
     function pitFix(player, pit) {
         if(toolsCounter) {
+            pit_fix.play('fast_fix');
             pit.kill();
             score++;
             scoreText.setText('Points: ' +score);
@@ -432,10 +465,17 @@
         }
         else {
             lives--;
+            hit.play('fast_hit');
+            var hitTween = game.add.tween(player.scale);
+            hitTween.to({x:px*0.85,y:py*0.85}, 100, Phaser.Easing.Linear.None);
+            hitTween.to({x:px,y:py}, 750, Phaser.Easing.Linear.None);
+            hitTween.start();
             pit.kill();
             livesText.setText('Lives: '+lives);
             if(!lives && !tester) {
-                crash.play('crash_start');
+                pit_fix.stop();
+                // hit.stop();
+                // crash.play('crash_start');
                 endGame();
                 var deadTween = game.add.tween(player.scale);
                 deadTween.to({x:0,y:0}, 1250, Phaser.Easing.Linear.None);
@@ -444,11 +484,13 @@
         }
     }
     function toolsAdd(player, tool) {
+        toolSound.play('tool');
         tool.kill();
         toolsCounter++;
         toolsText.setText('Tools: '+toolsCounter);
     }
     function healthAdd(player, health) {
+        heart.play('heart');
         health.kill();
         if(lives < 5) {
             lives++;
@@ -457,6 +499,8 @@
     }
     function endGame() {
         drive.stop();
+        timeSound.stop();
+        stop.play('stop');
         playing = false;
 
         pits.removeAll();
