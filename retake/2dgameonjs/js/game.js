@@ -140,23 +140,22 @@ function create() {
     pauseButton.height *= 0.5;
     pauseButton.anchor.set(1,0);
     pauseButton.visible = false;
-    // Кнопка выкл звука
+    // Кнопка вкл\выкл звука
     soundButton = game.add.button(game.world.width-5, 310, 'key_blank', soundGame, this, 0, 0, 0);
     soundButton.width *= 0.5;
     soundButton.height *= 0.5;
     soundButton.anchor.set(1,0);
-    // soundButton.visible = false;
+    // картинка выкл звука
     soundOff = game.add.sprite(game.world.width-5-soundButton.width*0.5, soundButton.y+soundButton.height*0.5, 'sound_off');
     soundOff.width *= 0.15;
     soundOff.height *= 0.15;
     soundOff.anchor.set(0.5,0.5);
     soundOff.visible = false;
-    // soundOff.fill = '#000';
+    // картинка вкл звука
     soundOn = game.add.sprite(game.world.width-5-soundButton.width*0.5, soundButton.y+soundButton.height*0.5, 'sound_on');
     soundOn.width *= 0.15;
     soundOn.height *= 0.15;
     soundOn.anchor.set(0.5,0.5);
-    // soundOff.fill = '#000';
     // Иконка супер силы
     power = game.add.sprite(game.world.width-5, game.world.height-5, 'power');
     power.width *= 0.075;
